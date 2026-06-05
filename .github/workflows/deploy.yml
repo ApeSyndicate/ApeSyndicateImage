@@ -1,4 +1,4 @@
-name: Extract Part Zip Files and Deploy to GitHub Pages
+name: Robust Part Zip Extract and Deploy to GitHub Pages
 
 on:
   push:
@@ -27,30 +27,39 @@ jobs:
       - name: Create Target Assets Directory
         run: mkdir -p nft-assets
 
-      - name: Unzip All Part Archives Automatically
+      - name: Extract Existing Zip Files Safely
         run: |
+          echo "=== Starting Safe Extraction ==="
+          shopt -s nocaseglob
           for i in {1..26}
           do
-            if [ -f "part$i.zip" ]; then
-              echo "Extracting part$i.zip ..."
-              unzip -q -o "part$i.zip" -d nft-assets/
+            FOUND_FILE=$(ls part$i.zip 2>/dev/null || true)
+            if [ ! -z "$FOUND_FILE" ]; then
+              echo "Extracting found archive: $FOUND_FILE ..."
+              unzip -q -o "$FOUND_FILE" -d nft-assets/
             else
-              echo "Notice: part$i.zip not found, skipping."
+              echo "Warning: part$i.zip not found on root. Skipping safely."
             fi
           done
 
-      - name: Flatten All Nested Subfolders and Files
+      - name: Flatten Nested Subfolders Safely
         run: |
-          echo "Moving all inner images out of subfolders..."
-          find nft-assets/ -type f -exec mv -t nft-assets/ {} +
-          echo "Removing empty subdirectories..."
-          find nft-assets/ -mindepth 1 -type d -delete || true
+          echo "=== Checking Target Directory ==="
+          if [ -d "nft-assets" ] && [ "$(ls -A nft-assets 2>/dev/null)" ]; then
+            echo "Moving inside assets to root layer..."
+            find nft-assets/ -type f -exec mv -t nft-assets/ {} +
+            echo "Cleaning empty directories..."
+            find nft-assets/ -mindepth 1 -type d -delete || true
+          else
+            echo "Error: Extraction directory is completely empty! Please verify your zip uploads."
+            exit 1
+          fi
 
       - name: Verify Extracted Structural Content
         run: |
-          echo "=== Total Images Successfully Extracted ==="
+          echo "=== Total Images Extracted ==="
           ls -1 nft-assets/ | wc -l
-          echo "=== Previewing Extracted Asset Filenames ==="
+          echo "=== Displaying Extracted Assets ==="
           ls -la nft-assets/ | head -n 25
           
       - name: Setup Dynamic GitHub Pages Environment
