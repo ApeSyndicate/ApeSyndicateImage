@@ -1,4 +1,4 @@
-name: Extract Multiple Zip Files and Deploy to GitHub Pages
+name: Extract Part Zip Files and Deploy to GitHub Pages
 
 on:
   push:
@@ -27,33 +27,31 @@ jobs:
       - name: Create Target Assets Directory
         run: mkdir -p nft-assets
 
-      - name: Unzip Main Images Archive
+      - name: Unzip All Part Archives Automatically
         run: |
-          if [ -f images.zip ]; then
-            unzip -q -o images.zip -d nft-assets/
-          fi
-
-      - name: Unzip Numbered Images Archives
-        run: |
-          for i in {1..30}
+          for i in {1..26}
           do
-            if [ -f "images($i).zip" ]; then
-              echo "Extracting images($i).zip ..."
-              unzip -q -o "images($i).zip" -d nft-assets/
+            if [ -f "part$i.zip" ]; then
+              echo "Extracting part$i.zip ..."
+              unzip -q -o "part$i.zip" -d nft-assets/
+            else
+              echo "Notice: part$i.zip not found, skipping."
             fi
           done
 
-      - name: Flatten Any Nested Folders
+      - name: Flatten All Nested Subfolders and Files
         run: |
-          find nft-assets/ -mindepth 2 -type f -exec mv -t nft-assets/ {} +
-          find nft-assets/ -type d -empty -delete
+          echo "Moving all inner images out of subfolders..."
+          find nft-assets/ -type f -exec mv -t nft-assets/ {} +
+          echo "Removing empty subdirectories..."
+          find nft-assets/ -mindepth 1 -type d -delete || true
 
       - name: Verify Extracted Structural Content
         run: |
-          echo "=== Total Images Extracted ==="
+          echo "=== Total Images Successfully Extracted ==="
           ls -1 nft-assets/ | wc -l
-          echo "=== Displaying First Few Assets ==="
-          ls -la nft-assets/ | head -n 20
+          echo "=== Previewing Extracted Asset Filenames ==="
+          ls -la nft-assets/ | head -n 25
           
       - name: Setup Dynamic GitHub Pages Environment
         uses: actions/configure-pages@v4
