@@ -1,4 +1,4 @@
-name: Unzip NFT Images and Deploy to GitHub Pages
+name: Extract Multiple Zip Files and Deploy to GitHub Pages
 
 on:
   push:
@@ -24,25 +24,36 @@ jobs:
       - name: Checkout Repository Source
         uses: actions/checkout@v4
 
-      - name: Install System Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y p7zip-full
+      - name: Create Target Assets Directory
+        run: mkdir -p nft-assets
 
-      - name: Recombine and Extract Split Zip Archives
+      - name: Unzip Main Images Archive
         run: |
-          mkdir -p nft-assets
-          if [ -f images.zip.001 ]; then
-            7z x images.zip.001 -onft-assets/ -y
-          else
-            echo "Error: Dynamic split zip files not found in root path!"
-            exit 1
+          if [ -f images.zip ]; then
+            unzip -q -o images.zip -d nft-assets/
           fi
+
+      - name: Unzip Numbered Images Archives
+        run: |
+          for i in {1..30}
+          do
+            if [ -f "images($i).zip" ]; then
+              echo "Extracting images($i).zip ..."
+              unzip -q -o "images($i).zip" -d nft-assets/
+            fi
+          done
+
+      - name: Flatten Any Nested Folders
+        run: |
+          find nft-assets/ -mindepth 2 -type f -exec mv -t nft-assets/ {} +
+          find nft-assets/ -type d -empty -delete
 
       - name: Verify Extracted Structural Content
         run: |
-          echo "=== Displaying Extracted Image Structure ==="
-          ls -la nft-assets/
+          echo "=== Total Images Extracted ==="
+          ls -1 nft-assets/ | wc -l
+          echo "=== Displaying First Few Assets ==="
+          ls -la nft-assets/ | head -n 20
           
       - name: Setup Dynamic GitHub Pages Environment
         uses: actions/configure-pages@v4
