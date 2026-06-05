@@ -1,0 +1,57 @@
+name: Unzip NFT Images and Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository Source
+        uses: actions/checkout@v4
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y p7zip-full
+
+      - name: Recombine and Extract Split Zip Archives
+        run: |
+          mkdir -p nft-assets
+          if [ -f images.zip.001 ]; then
+            7z x images.zip.001 -onft-assets/ -y
+          else
+            echo "Error: Dynamic split zip files not found in root path!"
+            exit 1
+          fi
+
+      - name: Verify Extracted Structural Content
+        run: |
+          echo "=== Displaying Extracted Image Structure ==="
+          ls -la nft-assets/
+          
+      - name: Setup Dynamic GitHub Pages Environment
+        uses: actions/configure-pages@v4
+
+      - name: Upload Finished NFT Directory Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './nft-assets'
+
+      - name: Deploy Live Build onto GitHub Pages Infrastructures
+        id: deployment
+        uses: actions/deploy-pages@v4
